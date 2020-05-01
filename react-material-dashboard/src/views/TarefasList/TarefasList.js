@@ -1,7 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { makeStyles } from '@material-ui/styles';
-import axios from 'axios'
 
+import { bindActionCreators } from 'redux'
+import { connect } from 'react-redux'
+import { 
+  listar,
+  salvar,
+  deletar,
+  alterarStatus
+} from '../../store/tarefasReducer'
+import {
+  esconder
+} from '../../store/mensagensReducer'
 import { TarefasToolbar, TarefasTable } from './components';
 import {
   Dialog,
@@ -20,99 +30,44 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const API_URL = 'https://minhastarefas-api.herokuapp.com'
 
-
-const TarefasList = () => {
+const TarefasList = (props) => {
   const classes = useStyles();
 
-  const [tarefas, setTarefas] = useState([]);
-  const [openDialog, setOpenDialog] = useState(false)
-  const [mensagem, setMensagem] = useState('')
-
-  const salvar = (tarefa) => {
-    axios.post(`${API_URL}/tarefas`, tarefa,{
-      headers: { 'x-tenant-id' : localStorage.getItem('email_usuario_logado') }
-    }).then(response => {
-      const novaTarefa = response.data
-      setTarefas([...tarefas, novaTarefa])
-      setMensagem('Item adicionado com sucesso')
-      setOpenDialog(true)
-    }).catch(err => {
-      setMensagem('Ocorreu um erro')
-      setOpenDialog(true)
-    }) 
-  }
-
-  const listarTarefas = () => {
-    axios.get(`${API_URL}/tarefas`,{
-      headers: { 'x-tenant-id' : localStorage.getItem('email_usuario_logado') }
-    }).then(response => {
-      const listarTarefas = response.data
-      setTarefas(listarTarefas)
-    }).catch(err => {
-      console.log(err)
-    }) 
-  }
   useEffect(() => {
-    listarTarefas()
+    props.listar()
   }, [])
-
-
-  const alterarStatus = (id) => {
-    axios.patch(`${API_URL}/tarefas/${id}`, null, {
-      headers: { 'x-tenant-id' : localStorage.getItem('email_usuario_logado') }
-    }).then(response => {
-      const lista = [...tarefas]
-      lista.forEach(tarefa => {
-        if(tarefa.id === id){
-          tarefa.done = true
-        }
-      })
-      setTarefas(lista)
-      setMensagem('Item atualizado com sucesso')
-      setOpenDialog(true)
-    }).catch(err => {
-      setMensagem('Ocorreu um erro')
-      setOpenDialog(true)
-    }) 
-  }
-
-  const deletar = (id) => {
-    axios.delete(`${API_URL}/tarefas/${id}`, {
-      headers: { 'x-tenant-id' : localStorage.getItem('email_usuario_logado') }
-    }).then(response => {
-      const lista = tarefas.filter(tarefa => tarefa.id !== id)
-      setTarefas(lista)
-      setMensagem('Item excluido com sucesso')
-      setOpenDialog(true)
-    }).catch(err => {
-      setMensagem('Ocorreu um erro')
-      setOpenDialog(true)
-    }) 
-  }
 
   return (
     <div className={classes.root}>
-      <TarefasToolbar salvar={salvar}/>
+      <TarefasToolbar salvar={props.salvar}/>
       <div className={classes.content}>
         <TarefasTable 
-          alterarStatus={alterarStatus} 
-          deleteAction={deletar}
-          tarefas={tarefas} 
+          alterarStatus={props.alterarStatus} 
+          deleteAction={props.deletar}
+          tarefas={props.tarefas} 
         />
       </div>
-      <Dialog open={openDialog} onClose={e => setOpenDialog(false)}>
+      <Dialog open={props.openDialog} onClose={props.esconder}>
         <DialogTitle>Atenção</DialogTitle>
         <DialogContent>
-          {mensagem}
+          {props.mensagem}
         </DialogContent>
         <DialogActions>
-          <Button onClick={e => setOpenDialog(false)}>Fechar</Button>
+          <Button onClick={props.esconder}>Fechar</Button>
         </DialogActions>
       </Dialog>
     </div>
   );
 };
 
-export default TarefasList;
+const mapStateToProps = state => ({
+  tarefas: state.tarefas.tarefas,
+  mensagem: state.mensagens.mensagem,
+  openDialog: state.mensagens.mostrarMensagem
+})
+
+const mapDispatchToProps = dispatch =>
+  bindActionCreators({listar, salvar, deletar, alterarStatus, esconder}, dispatch);
+
+export default connect(mapStateToProps, mapDispatchToProps)(TarefasList);
